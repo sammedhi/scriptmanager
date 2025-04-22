@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -11,6 +12,7 @@ import (
 
 var serverAddr string
 var filePath string
+var username string = "ftp"
 
 func init() {
 	fetchCmd.Flags().StringVar(&serverAddr, "addr", "", "The of ther server that hold the file")
@@ -22,39 +24,45 @@ var fetchCmd = &cobra.Command{
 	Use:   "fetch",
 	Short: "fetch the script at the target path",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Read the command line arguments
 		serverAddr, _ := cmd.Flags().GetString("addr")
-
-		fmt.Printf("Try to reach the server %s\n", serverAddr)
-		c, err := ftp.Dial(serverAddr)
-
-		if err != nil {
-			return err
-		}
-
 		filePath, err := cmd.Flags().GetString("file_path")
+
 		if err != nil {
-			fmt.Printf("There is no file_path argument\n")
 			return err
 		}
 
-		err = c.Login("ftp", "!MonMotDePasse5")
-		if err != nil {
-			fmt.Println(err)
-			return err
+		// Try to connect to the server
+		c, err := ftp.Dial(serverAddr, ftp.DialWithTimeout(5*time.Second))
 
+		if err != nil {
+			return fmt.Errorf("could not connect to the server %s; %v", serverAddr, err)
+		}
+
+		// Try to login to the server
+		err = c.Login(username, "!MonMotDePasse5")
+
+		if err != nil {
+			return fmt.Errorf("could not login to %s as %s; %v", serverAddr, username, err)
 		}
 
 		defer c.Quit()
 
+		fmt.Printf("successfully logged as %s\n", username)
+
+		// Try to retrieve the file
+		fmt.Printf("try to retrieve the file '%s'\n", filePath)
 		file, err := c.Retr(filePath)
 
 		if err != nil {
-			fmt.Printf("Could not retrieve the file %s\n", filePath)
-			return err
+			return fmt.Errorf("could not retrieve the file '%s'; %v", filePath, err)
 		}
 
 		defer file.Close()
+		fmt.Printf("successfully retrieved \n")
 
+		// Try to read the file
+		fmt.Printf("try to read the file %s\n", filePath)
 		buf, err := io.ReadAll(file)
 
 		if err != nil {
