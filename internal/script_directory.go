@@ -26,6 +26,18 @@ func getAppCacheDir() (string, error) {
 	return outputPath, nil
 }
 
+func getScriptDirectoryPath(scriptName string) (string, error) {
+	cacheDir, err := getAppCacheDir()
+
+	if err != nil {
+		return "", fmt.Errorf("could not get the cache directory; %v", err)
+	}
+
+	scriptDirectoryPath := filepath.Join(cacheDir, scriptName)
+
+	return scriptDirectoryPath, nil
+}
+
 func openFileWithDefaultProgram(filePath string) error {
 	var cmd *exec.Cmd
 
@@ -41,19 +53,12 @@ func openFileWithDefaultProgram(filePath string) error {
 	return cmd.Start()
 }
 
-func OpenScript(scriptName string) error {
-	cacheDir, err := getAppCacheDir()
-
-	if err != nil {
-		return fmt.Errorf("could not get the cache directory; %v", err)
-	}
-
-	scriptDirectoryPath := filepath.Join(cacheDir, scriptName)
+func readScriptInfo(scriptDirectoryPath string) (*ScriptInfo, error) {
 	scriptInfoPath := filepath.Join(scriptDirectoryPath, "script_info.json")
 	f, err := os.Open(scriptInfoPath)
 
 	if err != nil {
-		return fmt.Errorf("could not open the script info file; %v", err)
+		return nil, fmt.Errorf("could not open the script info file; %v", err)
 	}
 
 	defer f.Close()
@@ -63,7 +68,23 @@ func OpenScript(scriptName string) error {
 	err = json.Unmarshal(bytes, &scriptInfo)
 
 	if err != nil {
-		return fmt.Errorf("could not decode the script info; %v", err)
+		return nil, fmt.Errorf("could not decode the script info; %v", err)
+	}
+
+	return &scriptInfo, nil
+}
+
+func OpenScript(scriptName string) error {
+	scriptDirectoryPath, err := getScriptDirectoryPath(scriptName)
+
+	if err != nil {
+		return fmt.Errorf("could not get the script directory path; %v", err)
+	}
+
+	scriptInfo, err := readScriptInfo(scriptDirectoryPath)
+
+	if err != nil {
+		return fmt.Errorf("could not read the script info; %v", err)
 	}
 
 	scriptPath := filepath.Join(scriptDirectoryPath, scriptInfo.ScriptName+scriptInfo.ScriptExt)
@@ -77,20 +98,19 @@ func OpenScript(scriptName string) error {
 }
 
 func SaveScriptDirectory(scriptInfo ScriptInfo, script io.Reader) error {
-	cacheDir, err := getAppCacheDir()
-	outputPath := filepath.Join(cacheDir, scriptInfo.ScriptName)
+	scriptDirectoryPath, err := getScriptDirectoryPath(scriptInfo.ScriptName)
 
 	if err != nil {
-		return fmt.Errorf("could not get the cache directory; %v", err)
+		return fmt.Errorf("could not get the script directory path; %v", err)
 	}
 
-	err = os.MkdirAll(outputPath, os.ModePerm)
+	err = os.MkdirAll(scriptDirectoryPath, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("directory creation failed; %v", err)
 	}
 
-	scriptDest := filepath.Join(outputPath, scriptInfo.ScriptName+scriptInfo.ScriptExt)
-	scriptInfoDest := filepath.Join(outputPath, "script_info.json")
+	scriptDest := filepath.Join(scriptDirectoryPath, scriptInfo.ScriptName+scriptInfo.ScriptExt)
+	scriptInfoDest := filepath.Join(scriptDirectoryPath, "script_info.json")
 
 	// Create the file
 	dst, err := os.Create(scriptDest)
@@ -119,10 +139,28 @@ func SaveScriptDirectory(scriptInfo ScriptInfo, script io.Reader) error {
 }
 
 func LoadScriptDirectory(scriptName string) (*ScriptDirectory, error) {
-	// Load the script info from the file
-	// Load the file from the directory
-	// Return a new ScriptDirectory object
-	return nil, nil
+	scriptDirectoryPath, err := getScriptDirectoryPath(scriptName)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not get the script directory path; %v", err)
+	}
+
+	scriptInfo, err := readScriptInfo(scriptDirectoryPath)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not read the script info; %v", err)
+	}
+
+	scriptPath := filepath.Join(scriptDirectoryPath, scriptInfo.ScriptName+scriptInfo.ScriptExt)
+	scriptFile, err := os.Open(scriptPath)
+	if err != nil {
+		return nil, fmt.Errorf("could not open the script file; %v", err)
+	}
+
+	return &ScriptDirectory{
+		ScriptInfo:   *scriptInfo,
+		ScriptReader: scriptFile,
+	}, nil
 }
 
 func (sd *ScriptDirectory) Load() error {
