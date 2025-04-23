@@ -1,13 +1,8 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"scriptmanager/internal"
 	"strings"
 	"time"
@@ -44,7 +39,7 @@ func login(servAddr string, username string, password string) (*ftp.ServerConn, 
 	return c, nil
 }
 
-func fetchFile(c *ftp.ServerConn, filePath string, fileDest string) error {
+func fetchFile(c *ftp.ServerConn, filePath string) error {
 	file, err := c.Retr(filePath)
 
 	if err != nil {
@@ -53,40 +48,17 @@ func fetchFile(c *ftp.ServerConn, filePath string, fileDest string) error {
 
 	defer file.Close()
 
-	// Ceate the directory if it does not exist
-	dir := filepath.Dir(fileDest)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, os.ModePerm)
-		if err != nil {
-			return fmt.Errorf("directory creation failed; %v", err)
-		}
+	scriptInfo := internal.ScriptInfo{
+		ScriptName: fileNameWithoutExt(filePath),
+		ScriptExt:  filepath.Ext(filePath),
+		ServerPath: filePath,
+		ServerAddr: serverAddr,
 	}
 
-	// Create the file
-	dst, err := os.Create(fileDest)
-	if err != nil {
-		return fmt.Errorf("file creation failed; %v", err)
-	}
-	defer dst.Close()
-
-	_, err = io.Copy(dst, file)
+	err = internal.SaveScriptDirectory(scriptInfo, file)
 
 	if err != nil {
-		return fmt.Errorf("could not copy the file '%s' to '%s'; %v", filePath, fileDest, err)
-	}
-
-	return nil
-}
-
-func saveScriptInfo(scriptInfo internal.ScriptInfo, filePath string) error {
-	jsonInfo, err := json.Marshal(scriptInfo)
-	if err != nil {
-		return fmt.Errorf("could not marshal script info; %v", err)
-	}
-
-	err = os.WriteFile(filePath, jsonInfo, 0644)
-	if err != nil {
-		return fmt.Errorf("could not write script info to file; %v", err)
+		return fmt.Errorf("could not save the file '%s'; %v", filePath, err)
 	}
 
 	return nil
@@ -94,21 +66,6 @@ func saveScriptInfo(scriptInfo internal.ScriptInfo, filePath string) error {
 
 func fileNameWithoutExt(fileName string) string {
 	return strings.TrimSuffix(filepath.Base(fileName), filepath.Ext(fileName))
-}
-
-func openFileWithDefaultProgram(filePath string) error {
-	var cmd *exec.Cmd
-
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", "", filePath)
-	case "darwin":
-		cmd = exec.Command("open", filePath)
-	default: // linux, freebsd, etc.
-		cmd = exec.Command("xdg-open", filePath)
-	}
-
-	return cmd.Start()
 }
 
 var fetchCmd = &cobra.Command{
@@ -131,29 +88,19 @@ var fetchCmd = &cobra.Command{
 
 		defer c.Quit()
 
-		// Try to read the file
-		cacheDir, _ := os.UserCacheDir()
-		outputPath := filepath.Join(cacheDir, "scriptmanager", fileNameWithoutExt(filePath), filepath.Base(filePath))
-		err = fetchFile(c, filePath, outputPath)
+		err = fetchFile(c, filePath)
 
 		if err != nil {
 			return fmt.Errorf("fetching the file failed; %v", err)
 		}
 
-		fmt.Printf("File '%s' fetched successfully to '%s'\n", filePath, outputPath)
-
-		saveScriptInfo(internal.ScriptInfo{
-			ScriptName: fileNameWithoutExt(filePath),
-			ScriptExt:  filepath.Ext(filePath),
-			ServerPath: filePath,
-			ServerAddr: serverAddr,
-		}, filepath.Join(cacheDir, "scriptmanager", fileNameWithoutExt(filePath), "script_info.json"))
+		fmt.Printf("File '%s' fetched successfully\n", filePath)
 
 		if err != nil {
 			return fmt.Errorf("could not save script info; %v", err)
 		}
 
-		err = openFileWithDefaultProgram(outputPath)
+		err = internal.OpenScript(fileNameWithoutExt(filePath))
 
 		if err != nil {
 			return fmt.Errorf("could not open the file; %v", err)
