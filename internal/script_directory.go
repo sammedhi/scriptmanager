@@ -12,7 +12,7 @@ import (
 
 type ScriptDirectory struct {
 	ScriptInfo   ScriptInfo
-	ScriptReader io.Reader
+	ScriptReader io.ReadCloser
 }
 
 func getAppCacheDir() (string, error) {

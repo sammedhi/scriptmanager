@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"scriptmanager/internal"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -21,22 +20,6 @@ func init() {
 	fetchCmd.Flags().StringVar(&serverAddr, "addr", "", "The of ther server that hold the file")
 	fetchCmd.Flags().StringVar(&filePath, "file_path", "", "The path where the file to fetch is located inside the server")
 	rootCmd.AddCommand(fetchCmd)
-}
-
-func login(servAddr string, username string, password string) (*ftp.ServerConn, error) {
-	c, err := ftp.Dial(servAddr, ftp.DialWithTimeout(5*time.Second))
-
-	if err != nil {
-		return nil, fmt.Errorf("could not connect to the server %s; %v", servAddr, err)
-	}
-
-	err = c.Login(username, password)
-
-	if err != nil {
-		return nil, fmt.Errorf("could not login to %s as %s; %v", servAddr, username, err)
-	}
-
-	return c, nil
 }
 
 func fetchFile(c *ftp.ServerConn, filePath string) error {
@@ -80,7 +63,7 @@ var fetchCmd = &cobra.Command{
 			return err
 		}
 
-		c, err := login(serverAddr, username, password)
+		c, err := internal.Login(serverAddr, username, password)
 
 		if err != nil {
 			return err
