@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"scriptmanager/internal"
 	"strings"
 	"time"
 
@@ -76,6 +78,20 @@ func fetchFile(c *ftp.ServerConn, filePath string, fileDest string) error {
 	return nil
 }
 
+func saveScriptInfo(scriptInfo internal.ScriptInfo, filePath string) error {
+	jsonInfo, err := json.Marshal(scriptInfo)
+	if err != nil {
+		return fmt.Errorf("could not marshal script info; %v", err)
+	}
+
+	err = os.WriteFile(filePath, jsonInfo, 0644)
+	if err != nil {
+		return fmt.Errorf("could not write script info to file; %v", err)
+	}
+
+	return nil
+}
+
 func fileNameWithoutExt(fileName string) string {
 	return strings.TrimSuffix(filepath.Base(fileName), filepath.Ext(fileName))
 }
@@ -121,15 +137,26 @@ var fetchCmd = &cobra.Command{
 		err = fetchFile(c, filePath, outputPath)
 
 		if err != nil {
-			return fmt.Errorf("could not fetch the file '%s'; %v", filePath, err)
+			return fmt.Errorf("fetching the file failed; %v", err)
 		}
 
 		fmt.Printf("File '%s' fetched successfully to '%s'\n", filePath, outputPath)
 
+		saveScriptInfo(internal.ScriptInfo{
+			ScriptName: fileNameWithoutExt(filePath),
+			ScriptExt:  filepath.Ext(filePath),
+			ServerPath: filePath,
+			ServerAddr: serverAddr,
+		}, filepath.Join(cacheDir, "scriptmanager", fileNameWithoutExt(filePath), "script_info.json"))
+
+		if err != nil {
+			return fmt.Errorf("could not save script info; %v", err)
+		}
+
 		err = openFileWithDefaultProgram(outputPath)
 
 		if err != nil {
-			return fmt.Errorf("could not open the file '%s'; %v", outputPath, err)
+			return fmt.Errorf("could not open the file; %v", err)
 		}
 
 		return nil
