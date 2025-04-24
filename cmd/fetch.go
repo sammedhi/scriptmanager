@@ -13,8 +13,6 @@ import (
 
 var serverAddr string
 var filePath string
-var username string = "ftpuser"
-var password string = "gigigi"
 
 func init() {
 	fetchCmd.Flags().StringVar(&serverAddr, "addr", "", "The of ther server that hold the file")
@@ -61,6 +59,12 @@ var fetchCmd = &cobra.Command{
 
 		if err != nil {
 			return err
+		}
+
+		username, password, err := internal.AskCredentials()
+
+		if err != nil {
+			return fmt.Errorf("could not read the username and password; %v", err)
 		}
 
 		c, err := internal.Login(serverAddr, username, password)

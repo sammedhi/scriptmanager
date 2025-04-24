@@ -29,11 +29,19 @@ var uploadCmd = &cobra.Command{
 		defer scriptDir.ScriptReader.Close()
 
 		// Connect to the server
+		username, password, err := internal.AskCredentials()
+
+		if err != nil {
+			return fmt.Errorf("could not read the username and password; %v", err)
+		}
+
 		c, err := internal.Login(scriptDir.ScriptInfo.ServerAddr, username, password)
 
 		if err != nil {
 			return fmt.Errorf("could not connect to the server; %v", err)
 		}
+
+		defer c.Quit()
 
 		// Upload the file
 		err = c.Stor(scriptDir.ScriptInfo.ServerPath, scriptDir.ScriptReader)
@@ -41,6 +49,8 @@ var uploadCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("could not upload the file; %v", err)
 		}
+
+		fmt.Println("File uploaded successfully")
 
 		return nil
 	},
