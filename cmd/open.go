@@ -7,8 +7,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var fileNameParamName = "file_name"
+var fileNameShortParamName = "n"
+
 func init() {
-	openCmd.Flags().StringVar(&scriptName, "script_name", "", "The name of the script to upload")
+	openCmd.Flags().StringVarP(&fileName, fileNameParamName, fileNameShortParamName, "", "The name of the file to upload")
 	rootCmd.AddCommand(openCmd)
 }
 
@@ -16,7 +19,7 @@ var openCmd = &cobra.Command{
 	Use:   "open",
 	Short: "open one of the script fetched previously",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		scriptName, _ := cmd.Flags().GetString("script_name")
+		scriptName, _ := cmd.Flags().GetString(fileNameParamName)
 
 		scriptDir, err := internal.LoadScriptDirectory(scriptName)
 

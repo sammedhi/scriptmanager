@@ -13,10 +13,15 @@ import (
 
 var serverAddr string
 var filePath string
+var filePathParamName = "file_path"
+var filePathShortParamName = "p"
+
+var serverAddrParamName = "server_addr"
+var serverAddrShortParamName = "s"
 
 func init() {
-	fetchCmd.Flags().StringVar(&serverAddr, "addr", "", "The of ther server that hold the file")
-	fetchCmd.Flags().StringVar(&filePath, "file_path", "", "The path where the file to fetch is located inside the server")
+	fetchCmd.Flags().StringVarP(&serverAddr, serverAddrParamName, serverAddrShortParamName, "", "The address of the server that hold the file")
+	fetchCmd.Flags().StringVarP(&filePath, filePathParamName, filePathShortParamName, "", "The path where the file to fetch is located inside the server")
 	rootCmd.AddCommand(fetchCmd)
 }
 
@@ -54,8 +59,8 @@ var fetchCmd = &cobra.Command{
 	Short: "fetch the script at the target path",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Read the command line arguments
-		serverAddr, _ := cmd.Flags().GetString("addr")
-		filePath, err := cmd.Flags().GetString("file_path")
+		serverAddr, _ := cmd.Flags().GetString(serverAddrParamName)
+		filePath, err := cmd.Flags().GetString(filePathParamName)
 
 		if err != nil {
 			return err
