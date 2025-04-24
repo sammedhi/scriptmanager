@@ -13,8 +13,8 @@ import (
 
 var serverAddr string
 var filePath string
-var username string = "ftp"
-var password string = "!MonMotDePasse5"
+var username string = "ftpuser"
+var password string = "gigigi"
 
 func init() {
 	fetchCmd.Flags().StringVar(&serverAddr, "addr", "", "The of ther server that hold the file")
