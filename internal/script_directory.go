@@ -1,3 +1,4 @@
+// Package internal contains internal utilities and logic for the script manager CLI tool.
 package internal
 
 import (
@@ -10,11 +11,14 @@ import (
 	"runtime"
 )
 
+// ScriptDirectory represents a directory containing a script and its metadata.
 type ScriptDirectory struct {
-	ScriptInfo   ScriptInfo
-	ScriptReader io.ReadCloser
+	ScriptInfo   ScriptInfo    // Metadata about the script.
+	ScriptReader io.ReadCloser // Reader for the script file.
 }
 
+// getAppCacheDir returns the cache directory path for the application.
+// It creates a subdirectory named "scriptmanager" in the user's cache directory.
 func getAppCacheDir() (string, error) {
 	cacheDir, err := os.UserCacheDir()
 	outputPath := filepath.Join(cacheDir, "scriptmanager")
@@ -26,6 +30,10 @@ func getAppCacheDir() (string, error) {
 	return outputPath, nil
 }
 
+// getScriptDirectoryPath returns the path to the directory for a specific script.
+// Parameters:
+// - scriptName: The name of the script.
+// Returns the full path to the script's directory.
 func getScriptDirectoryPath(scriptName string) (string, error) {
 	cacheDir, err := getAppCacheDir()
 
@@ -38,6 +46,10 @@ func getScriptDirectoryPath(scriptName string) (string, error) {
 	return scriptDirectoryPath, nil
 }
 
+// openFileWithDefaultProgram opens a file using the default program for the current OS.
+// Parameters:
+// - filePath: The path to the file to open.
+// Returns an error if the file cannot be opened.
 func openFileWithDefaultProgram(filePath string) error {
 	var cmd *exec.Cmd
 
@@ -53,6 +65,10 @@ func openFileWithDefaultProgram(filePath string) error {
 	return cmd.Start()
 }
 
+// readScriptInfo reads the script metadata from the "script_info.json" file in the script's directory.
+// Parameters:
+// - scriptDirectoryPath: The path to the script's directory.
+// Returns the ScriptInfo object or an error if the file cannot be read or parsed.
 func readScriptInfo(scriptDirectoryPath string) (*ScriptInfo, error) {
 	scriptInfoPath := filepath.Join(scriptDirectoryPath, "script_info.json")
 	f, err := os.Open(scriptInfoPath)
@@ -74,6 +90,10 @@ func readScriptInfo(scriptDirectoryPath string) (*ScriptInfo, error) {
 	return &scriptInfo, nil
 }
 
+// OpenScript opens a script file using the default program.
+// Parameters:
+// - scriptName: The name of the script to open.
+// Returns an error if the script cannot be opened.
 func OpenScript(scriptName string) error {
 	scriptDirectoryPath, err := getScriptDirectoryPath(scriptName)
 
@@ -84,7 +104,7 @@ func OpenScript(scriptName string) error {
 	scriptInfo, err := readScriptInfo(scriptDirectoryPath)
 
 	if err != nil {
-		return fmt.Errorf("could not read the script info; %v", err)
+		return fmt.Errorf("could not read the script info; `%`v", err)
 	}
 
 	scriptPath := filepath.Join(scriptDirectoryPath, scriptInfo.ScriptName+scriptInfo.ScriptExt)
@@ -97,6 +117,11 @@ func OpenScript(scriptName string) error {
 	return nil
 }
 
+// SaveScriptDirectory saves a script and its metadata to the local directory.
+// Parameters:
+// - scriptInfo: Metadata about the script.
+// - script: The script content as an io.Reader.
+// Returns an error if the script or metadata cannot be saved.
 func SaveScriptDirectory(scriptInfo ScriptInfo, script io.Reader) error {
 	scriptDirectoryPath, err := getScriptDirectoryPath(scriptInfo.ScriptName)
 
@@ -138,6 +163,10 @@ func SaveScriptDirectory(scriptInfo ScriptInfo, script io.Reader) error {
 	return nil
 }
 
+// LoadScriptDirectory loads a script and its metadata from the local directory.
+// Parameters:
+// - scriptName: The name of the script to load.
+// Returns a ScriptDirectory object or an error if the script cannot be loaded.
 func LoadScriptDirectory(scriptName string) (*ScriptDirectory, error) {
 	scriptDirectoryPath, err := getScriptDirectoryPath(scriptName)
 
@@ -161,12 +190,4 @@ func LoadScriptDirectory(scriptName string) (*ScriptDirectory, error) {
 		ScriptInfo:   *scriptInfo,
 		ScriptReader: scriptFile,
 	}, nil
-}
-
-func (sd *ScriptDirectory) Load() error {
-	return nil
-}
-
-func (sd *ScriptDirectory) Save() error {
-	return nil
 }
